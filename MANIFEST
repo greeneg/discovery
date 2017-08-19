@@ -1,0 +1,8 @@
+MANIFEST
+cpanfile
+Makefile.PL
+MANIFEST.SKIP
+bin/discovery
+lib/Discovery.pm
+lib/Discovery/Constants.pm
+t/001_compile.t

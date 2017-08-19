@@ -1,0 +1,378 @@
+#!/usr/bin/env perl
+
+#########################################################################################
+#                                                                                       #
+# Application: discovery.pl                                                             #
+# Summary:     A System Discovery Tool                                                  #
+# Author:      Gary L. Greene, Jr. <greeneg@yggdrasilsoft.com>                          #
+# Copyright:   2011-2017 YggdrasilSoft, LLC.                                            #
+# License:     Apache Public License, v2                                                #
+#                                                                                       #
+#=======================================================================================#
+#                                                                                       #
+# Licensed under the Apache License, Version 2.0 (the "License");                       #
+# you may not use this file except in compliance with the License.                      #
+# You may obtain a copy of the License at                                               #
+#                                                                                       #
+#     http://www.apache.org/licenses/LICENSE-2.0                                        #
+#                                                                                       #
+# Unless required by applicable law or agreed to in writing, software                   #
+# distributed under the License is distributed on an "AS IS" BASIS,                     #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.              #
+# See the License for the specific language governing permissions and                   #
+# limitations under the License.                                                        #
+#                                                                                       #
+#########################################################################################
+
+use strict;
+use warnings;
+use feature ":5.18";
+use English;
+use utf8;
+
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+
+use Carp;
+use Getopt::Long qw(:config gnu_compat);
+use Config::IniFiles;
+use Discovery::Constants;
+use Data::Dumper;
+use File::Spec;
+use File::Basename;
+use POSIX;
+
+our $DEBUG;
+
+my $configuration_file;
+my $output_format;
+my $enable_debug;
+my $enable_trace;
+my $external_dir;
+my $custom_dir;
+my $log_level;
+my $disable_externals;
+my $disable_customs;
+
+# get the app name
+my $appname = basename($0);
+
+sub get_general_config {
+    my $config = shift;
+
+    my %general_config;
+    $general_config{'external_dir'}     = $config->val('General', 'ExternalDirectory');
+    $general_config{'custom_dir'}       = $config->val('General', 'CustomDirectory');
+    $general_config{'enable_externals'} = $config->val('General', 'EnableExternals');
+    $general_config{'enable_custom'}    = $config->val('General', 'EnableCustom');
+    $general_config{'output_format'}    = $config->val('General', 'OutputFormat');
+    $general_config{'debug_log'}        = $config->val('General', 'DebugLogPath');
+    $general_config{'logfile'}          = $config->val('General', 'LogFilePath');
+
+    return %general_config;
+}
+
+sub get_cli_config {
+    my $config = shift;
+
+    my %cli_config;
+    $cli_config{'debug'}     = $config->val('CLI', 'EnableDebugging');
+    $cli_config{'trace'}     = $config->val('CLI', 'EnableTracing');
+    $cli_config{'verbose'}   = $config->val('CLI', 'BeVerbose');
+    $cli_config{'log_level'} = $config->val('CLI', 'LogLevel');
+
+    return %cli_config;
+}
+
+sub load_config {
+    # read in configuration
+    my $cfg_file = File::Spec->rootdir() . "etc/discovery/config.ini";
+    my $cfg      = Config::IniFiles->new(-file => $cfg_file);
+
+    my %general_config = get_general_config($cfg);
+    my %cli_config     = get_cli_config($cfg);
+
+    # turn this into a merged configuration hash
+    my %config = (
+        'general' => \%general_config,
+        'cli'     => \%cli_config,
+    );
+
+    return %config;
+}
+
+sub logger {
+    my ($appname, $log, @msg) = @_;
+
+    my $ltime = strftime("%Y-%m-%d %H:%M:%S", localtime(time));
+    print $log "$ltime: $appname: @msg\n";
+}
+
+sub debug_logger {
+    my ($appname, $debug_log, @msg) = @_;
+
+    my $ltime = strftime("%Y-%m-%d %H:%M:%S", localtime(time));
+    print $debug_log "DEBUG LOG: $ltime: $appname: @msg";
+}
+
+sub print_and_log {
+    my ($appname, $debug_log, @msg) = @_;
+
+    debug_logger($appname, $debug_log, @msg);
+    print STDOUT "@msg";
+}
+
+sub get_host_os {
+    my ($appname, $log, $hostname, %config) = @_;
+
+    # First, which OS does this machine have? Query PuppetDB for this info
+    print STDERR "Puppet REST URL: $config{'general'}->{'baseurl'}/$hostname/facts/kernel\n" if $DEBUG;
+    logger($appname, $log, "Puppet REST URL: $config{'general'}->{'baseurl'}/$hostname/facts/kernel");
+    my $os_query_json = get("$config{'general'}->{'baseurl'}/$hostname/facts/kernel");
+
+    # more debugging code
+    print STDERR "JSON response to QUERY=kernel:\n $os_query_json\n" if $DEBUG;
+    logger($appname, $log, "JSON response to QUERY=kernel:\n $os_query_json");
+    my $decoded_os_json = decode_json($os_query_json);
+
+    print STDERR "Perl encoded response:\n" . Dumper($decoded_os_json) . "\n" if $DEBUG;
+    print STDERR "KERNEL: " . $decoded_os_json->[0]->{'value'} ."\n" if $DEBUG;
+    logger($appname, $log, "Perl encoded response:\n" . Dumper($decoded_os_json));
+    logger($appname, $log, "KERNEL: " . $decoded_os_json->[0]->{'value'});
+
+    return $decoded_os_json;
+}
+
+sub class_yaml_print {
+    my ($app, $class_type, $debug_log, %config) = @_;
+
+    foreach my $class (keys %{$config{$class_type}}) {
+        if (ref($config{$class_type}->{$class}) eq 'HASH') {
+            print_and_log($app, $debug_log, "  $class:\n");
+            foreach my $key (keys %{$config{$class_type}->{$class}}) {
+                print_and_log($app, $debug_log, "    $key: $config{$class_type}->{$class}->{$key}\n");
+            }
+        } else {
+            print_and_log($app, $debug_log, "  $class:\n");
+        }
+    }
+}
+
+sub global_parameters_yaml_print {
+    my ($app, $debug_log, %config) = @_;
+
+    print_and_log($app, $debug_log, "parameters: \n");
+    foreach my $param_name (keys %{$config{'global_params'}}) {
+        if (ref($config{'global_params'}->{$param_name}) eq 'HASH') {
+            print_and_log($app, $debug_log, "  $param_name:\n");
+            foreach my $key (keys %{$config{'global_params'}->{$param_name}}) {
+                print_and_log($app, $debug_log, "    $key: $config{'global_params'}->{$param_name}->{$key}\n");
+            }
+        } else {
+            print_and_log($app, $debug_log, "  $param_name: $config{'global_params'}->{$param_name}\n");
+        }
+    }
+}
+
+sub environment_yaml_print {
+    my ($app, $debug_log, $hostname, $decoded_os_json, %config) = @_;
+
+    # Which environment should we be in?
+    my $environment = "";
+    if ($decoded_os_json->[0]->{'value'} eq 'Linux') {
+        unless ($hostname eq 'test-vm-linux.minervanetworks.com') {
+            $environment = $config{'platforms'}->{'linux'}->{'prod_name'};
+        } else {
+            $environment = $config{'platforms'}->{'linux'}->{'test_name'};
+        }
+    } elsif ($decoded_os_json->[0]->{'value'} eq 'windows') {
+        unless ($hostname eq 'test-vm-winsrv.minervanetworks.com' or
+                $hostname eq 'test-w7-vm.minervanetworks.com' or
+                $hostname eq 'ggreene-w7-vm.minervanetworks.com') {
+            $environment = $config{'platforms'}->{'win32'}->{'prod_name'};
+        } else {
+            $environment = $config{'platforms'}->{'win32'}->{'test_name'};
+        }
+    } elsif ($decoded_os_json->[0]->{'value'} eq 'Darwin') {
+        unless ($hostname eq 'test-vm-mac.minervanetworks.com' or
+                $hostname eq 'ggreene-imac.minervanetworks.com') {
+            $environment = $config{'platforms'}->{'macos'}->{'prod_name'};
+        } else {
+            $environment = $config{'platforms'}->{'macos'}->{'test_name'};
+        }
+    }
+    print_and_log($app, $debug_log, "environment: $environment\n");
+}
+
+sub build_yaml {
+    my ($appname, $log, $debug_log, $hostname, $decoded_os_json, %config) = @_;
+
+    print STDERR "OUTPUT ------\n" if $DEBUG;
+    print STDERR "--\n" if $DEBUG;
+    debug_logger($appname, $debug_log, "***** $hostname *****\n");
+
+    # Now that we know the OS, we can build a rudimentary JSON file for response:
+    print_and_log($appname, $debug_log, "---\n");
+    print_and_log($appname, $debug_log, "classes: \n");
+
+    class_yaml_print($appname, 'global_classes', $debug_log, %config);
+    if ($decoded_os_json->[0]->{'value'} eq 'Linux') {
+        class_yaml_print($appname, 'linux_classes', $debug_log, %config);
+    } elsif ($decoded_os_json->[0]->{'value'} eq 'Darwin') {
+        class_yaml_print($appname, 'macos_classes', $debug_log, %config);
+    } elsif ($decoded_os_json->[0]->{'value'} eq 'windows') {
+        class_yaml_print($appname, 'win32_classes', $debug_log, %config);
+    }
+    
+    # now print the global parameters, if any
+    global_parameters_yaml_print($appname, $debug_log, %config);
+
+    # finally, the host's environment
+    environment_yaml_print($appname, $debug_log, $hostname, $decoded_os_json, %config);
+    
+    debug_logger($appname, $debug_log, "***** END: $hostname *****\n");
+}
+
+sub print_help {
+    say "$Discovery::Constants::title $Discovery::Constants::version";
+    say "=====================";
+    say "";
+    say "Synopsis:";
+    say "---------";
+    say "Discover and report useful information about a system";
+    say "";
+    say "Usage:";
+    say "------";
+    say "    $appname [-h|--help] [-v|--version] [-d|--debug] [-t|--trace]";
+    say "      [-f|--format=<json|perleval>] [-c|--config=CONFIG_FILE]";
+    say "      [-e|--external-dir=DIR] [--short-version] [--no-external-dir]";
+    say "      [-l|--log-level=<none|debug|info|notice|warning|error|critical|alert|emergency>]";
+    say "      [--no-custom-dir]";
+    say "";
+    say "Description:";
+    say "------------";
+    say "Discover and report useful information about the current running system for use";
+    say "with the CfgMgr client and server. The backend to the application is an easily";
+    say "extensible collection of Perl modules, allowing adding checks for new types of";
+    say "information and support of any platform that Perl runs on with relative ease.";
+    say "This makes gathering information about a system easy in both shell and Perl.";
+    say "";
+    say "If no information types are passed, all types and their values are printed in";
+    say "plain key=value format";
+    say "";
+    say "Options:";
+    say "--------";
+    say "  General Options:";
+    say "    -h|--help             Output this help information";
+    say "    -v|--version          Output the version and copyright information";
+    say "    -d|--debug            Enable debug output";
+    say "    -t|--trace            Enable backtraces on errors";
+    say "    --short-version       Output only the version number";
+    say "  Specific Options:";
+    say "    -f|--format FORMAT    Print all output in the specified format.";
+    say "                          Supported formats are plain (the default), JSON, and";
+    say "                          perleval";
+    say "    -c|--config FILE      Use a specific configuration file";
+    say "    -e|--external-dir DIR The directory where external type tests are installed";
+    say "    --no-external-dir     Disable external type tests";
+    say "    --no-custom-dir       Disable custom type tests";
+    say "    -l|--log-level LEVEL  Set the amount of logged data printed based on a syslog";
+    say "                          like set of levels:";
+    say "                            * none: prints no extra logging messages";
+    say "                            * debug: prints debug logging messages";
+    say "                            * info: prints informational logging messages";
+    say "                            * warning: prints warning logging messages";
+    say "                            * error: prints error logging messages";
+    say "                            * critical: prints critical logging messages";
+    say "                            * alert: prints alert logging messages";
+    say "                            * emergency: prints emergency logging messages";
+    say "";
+    say "Examples:";
+    say "--------";
+    say "Discover all:";
+    say "";
+    say "    \$ discovery";
+    say "    architecture=x86_64";
+    say "    block_devices=sda,sdb,sdc";
+    say "    domain=example.com";
+    say "    fqdn=host.example.com";
+    say "    [....]";
+    say "";
+    say "Discover a single type:";
+    say "";
+    say "    \$ discovery domain";
+    say "    domain=example.com";
+    say "";
+    say "Format output as JSON:";
+    say "";
+    say "    \$ discovery --format=json architecture kernel hw_type";
+    say "    {";
+    say "      \"architecture\": \"x86_64\"";
+    say "      \"kernel\": \"Darwin\"";
+    say "      \"hw_type\": \"physical\"";
+    say "    }";
+    say "";
+    say "Author:";
+    say "-------";
+    say "  $Discovery::Constants::author";
+    say "";
+    say "License:";
+    say "--------";
+    say "  $Discovery::Constants::license";
+}
+
+sub print_version {
+    say "$Discovery::Constants::title $Discovery::Constants::version";
+    say "$Discovery::Constants::copyright";
+    say "$Discovery::Constants::license";
+    say "Author: $Discovery::Constants::author";
+}
+
+sub main {
+    # load configuration
+    my %config = load_config();
+
+    if (defined($enable_debug)) {
+        # set the debug variable now
+        $DEBUG = 1;
+    }
+
+    print STDERR "Dump of our config hash: \n" if $DEBUG;
+    print STDERR Dumper(%config), "\n" if $DEBUG;
+
+    # open the log for writing
+    open(my $log, ">>", $config{'general'}->{'logfile'}) or
+        die("Cannot open log file\n");
+
+    if ($DEBUG) {
+        # open debug log for writing
+        open(my $debug_log, ">>". $config{'general'}->{'debug_log'}) or
+            die("Cannot open log file\n");
+    }
+
+    # some debugging boilder plate
+    print STDERR "RUNNING DISCOVERY\n" if $DEBUG;
+
+    # start writing to the logs
+    logger($appname, $log, "---- NEW RUN ----\n");
+}
+
+GetOptions (
+    'h|help'           => sub { print_help && exit 0 },
+    'v|version'        => sub { print_version && exit 0 },
+    'c|config=s'       => \$configuration_file,
+    'f|format=s'       => \$output_format,
+    'd|debug'          => \$enable_debug,
+    't|trace'          => \$enable_trace,
+    'e|external-dir=s' => \$external_dir,
+    'l|log-level=s'    => \$log_level,
+    'short-version'    => sub { say $Discovery::Constants::version },
+    'no-external-dir'  => \$disable_externals,
+    'no-custom-dir'    => \$disable_customs
+);
+
+# main pass in the arguments
+main(@ARGV);
+
+exit 0;
+
