@@ -44,6 +44,7 @@ use Carp;
 use Getopt::Long qw(:config gnu_compat);
 use Config::IniFiles;
 use Discovery::Constants;
+use Discovery::Logger;
 use Discovery::Util;
 use Data::Dumper;
 use File::Spec;
@@ -104,23 +105,6 @@ my sub load_config {
     );
 
     return %config;
-}
-
-my sub logger ($appname, $log, @msg) {
-    my $ltime = strftime("%b %d %H:%M:%S", localtime(time));
-    my $hname = hostname;
-    
-    print $log "$ltime: $hname $appname: @msg\n";
-}
-
-my sub debug_logger ($appname, $debug_log, @msg) {
-    my $ltime = strftime("%Y-%m-%d %H:%M:%S", localtime(time));
-    print $debug_log "DEBUG LOG: $ltime: $appname: @msg";
-}
-
-my sub print_and_log ($appname, $debug_log, @msg) {
-    debug_logger($appname, $debug_log, @msg);
-    print STDOUT "@msg";
 }
 
 my sub print_help {
@@ -243,12 +227,13 @@ my sub main {
     # some debugging boilder plate
     say STDERR "RUNNING DISCOVERY" if $DEBUG;
 
-    # start writing to the logs
-    logger($appname, $log, "---- NEW RUN ----");
-
     # Now that we have the boiler-plate in place, set up our functions library
     # object
     my $discovery = Discovery::Util->new(\%config, $DEBUG);
+    my $logger = Discovery::Logger->new(\%config, $DEBUG);
+
+    # start writing to the logs
+    $logger->logger($appname, $log, "---- NEW RUN ----");
 
     # Now, call the discovery loop
     my $ret_data = $discovery->discovery_loop();

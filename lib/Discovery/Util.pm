@@ -1,6 +1,18 @@
 package Discovery::Util;
 
-use v5.22;
+use strict;
+use warnings;
+use feature ":5.22";
+# Add features to system for lexical subs and signatures
+# disable all warnings for these as they are still experimental
+# (likely won't change much though in the future...)
+no warnings "experimental::lexical_subs";
+no warnings "experimental::signatures";
+use feature 'lexical_subs';
+use feature 'signatures';
+use English;
+use utf8;
+
 use Data::Dumper;
 
 my $VERSION = 0.1;
@@ -9,11 +21,7 @@ my $VERSION = 0.1;
 my %config;
 my $DEBUG;
 
-sub new {
-    my $class = shift;
-    my $config = shift;
-    my $DEBUG = shift;
-
+sub new ($class, $config, $DEBUG) {
     my $self = {};
     bless $self, $class;
 
@@ -23,14 +31,13 @@ sub new {
     return $self;
 }
 
-
-sub _initialize {
+sub _initialize ($self, $config, $debug) {
     my $sub = (caller(0))[3];
 
-    print STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Setting up Util object\n";
+    say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Setting up Util object" if $debug;
 
-    %config = %{$_[1]};
-    $DEBUG = $_[2];
+    %config = %{$config};
+    $DEBUG = $debug;
 }
 
 sub discovery_loop {
