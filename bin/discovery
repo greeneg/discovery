@@ -92,7 +92,17 @@ my sub get_cli_config ($config) {
 
 my sub load_config {
     # read in configuration
-    my $cfg_file = File::Spec->rootdir() . "etc/discovery/config.ini";
+    my $cfg_file;
+    unless (defined($configuration_file)) {
+        $cfg_file = File::Spec->rootdir() . "etc/discovery/config.ini";
+    } else {
+        if (-f $configuration_file) {
+            $cfg_file = $configuration_file;
+        } else {
+            say STDERR "Configuration File Not Found. Exiting.";
+            exit -1;
+        }
+    }
     my $cfg      = Config::IniFiles->new(-file => $cfg_file);
 
     my %general_config = get_general_config($cfg);
@@ -236,7 +246,7 @@ my sub main {
     $logger->logger($appname, $log, "---- NEW RUN ----");
 
     # Now, call the discovery loop
-    my $ret_data = $discovery->discovery_loop();
+    my $ret_data = $discovery->discovery_loop(\%config, $DEBUG);
 }
 
 GetOptions (
