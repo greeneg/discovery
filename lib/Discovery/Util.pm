@@ -33,6 +33,12 @@ use feature 'signatures';
 use English;
 use utf8;
 
+use FindBin;
+use lib "$FindBin::Bin/../../lib";
+
+use Discovery::Constants;
+use Discovery::Config;
+use Discovery::Logger;
 use Data::Dumper;
 
 my $VERSION = 0.1;
@@ -40,6 +46,7 @@ my $VERSION = 0.1;
 # private variables
 my %config;
 my $DEBUG;
+my $conf;
 
 sub new ($class, $config, $DEBUG) {
     my $self = {};
@@ -51,16 +58,20 @@ sub new ($class, $config, $DEBUG) {
     return $self;
 }
 
-sub _initialize ($self, $config, $debug) {
+our sub _initialize ($self, $config, $debug) {
     my $sub = (caller(0))[3];
 
     say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Setting up Util object" if $debug;
 
+    $conf = Discovery::Config->new($config, $debug);
     %config = %{$config};
     $DEBUG = $debug;
 }
 
-sub discovery_loop {
+our sub discovery_loop ($self, $config, $debug) {
+    my $os = $conf->get_os($config, $debug);
+
+    #if ($config{'
 }
 
 1;
