@@ -24,6 +24,8 @@
 #                                                                                       #
 #########################################################################################
 
+package Discovery::Plugins::Uptime;
+
 use strict;
 use warnings;
 use feature ":5.22";
@@ -40,78 +42,84 @@ use utf8;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
-use Carp;
-use Cwd qw(abs_path);
-use File::Basename qw(dirname);
-use Getopt::Long qw(:config no_ignore_case);
-use Config::IniFiles;
-use Discovery::Constants;
-use Discovery::Logger;
-use Discovery::Util;
-use Data::Dumper;
-
-my sub main ($flags, @arguments) {
-    my %flags = %{$flags};
-
-    # This gets us the install location of our plugins
-    $flags{plugin_path} = dirname(abs_path($0)) . "/../lib/";
-
-    # load configuration
-    my $cfg = Discovery::Config->new();
-    my %config = $cfg->load_config(%flags);
-
-    say STDERR "Dump of our config hash:" if $flags{debug};
-    say STDERR Dumper(%config) if $flags{debug};
-
-    # open the log for writing
-    open(my $log, ">>", $config{'general'}->{'logfile'}) or
-        die("Cannot open log file\n");
-
-    if ($flags{debug}) {
-        # open debug log for writing
-        open(my $debug_log, ">>". $config{'general'}->{'debug_log'}) or
-            die("Cannot open log file\n");
+BEGIN {
+    if ($OSNAME eq 'Linux' || $OSNAME eq 'Darwin') {
+        use Unix::Uptime;
+    } elsif ($OSNAME eq 'Win32') {
+        require Win32::Uptime;
+        import Win32::Uptime;
     }
-
-    # some debugging boilder plate
-    say STDERR "RUNNING DISCOVERY" if $flags{debug};
-
-    # Now that we have the boiler-plate in place, set up our functions library
-    # object
-    my $discovery = Discovery::Util->new(\%config, $flags{debug});
-    my $logger = Discovery::Logger->new(\%config, $flags{debug});
-
-    my $appname = $discovery->app_name($0);
-
-    # start writing to the logs
-    $logger->logger($appname, $log, "---- NEW RUN ----");
-
-    # Now, call the discovery loop
-    my $ret_data = $discovery->discovery_loop(\%config);
 }
 
-my %flags;
-# set some defaults
-%flags = (
-    'debug'    => 0,
-    'trace'    => 0,
-    'no_c_dir' => 0
-);
+sub new ($class) {
+    my $self = {};
+    bless $self, $class;
 
-GetOptions (
-    'h|help'           => sub { &Discovery::Util::print_help && exit 0 },
-    'v|version'        => sub { &Discovery::Util::print_version && exit 0 },
-    'c|config=s'       => sub { $flags{cfgfile}    = $ARG[1] },
-    'f|format=s'       => sub { $flags{format}     = $ARG[1] },
-    'd|debug'          => sub { $flags{debug}      = 1 },
-    't|trace'          => sub { $flags{trace}      = 1 },
-    'l|log-level=s'    => sub { $flags{log_lvl}    = $ARG[1] },
-    'x|custom-dir=s'   => sub { $flags{custom_dir} = $ARG[1] },
-    'short-version'    => sub { say $Discovery::Constants::version; exit 0 },
-    'no-custom-dir'    => sub { $flags{no_c_dir} = 1 }
-) or die "See help for proper usage\n";
+    return $self;   
+}
 
-# main pass in the arguments
-main(\%flags, @ARGV);
+my sub uptime_days ($seconds) {
+    my $days = $seconds / 86400;
 
-exit 0;
+    return int $days;
+}
+
+my sub uptime_hours ($seconds) {
+    my $hours = $seconds / 3600;
+
+    return int $hours;
+}
+
+our sub runme ($self, $os, $format) {
+    my $sub = (caller(0))[3];
+
+    my $seconds;
+    my $hours;
+    my $days;
+    my %uptime;
+
+    if ($os eq "linux" || $os eq 'darwin') {
+        $seconds = Unix::Uptime->uptime();
+        $days = uptime_days($seconds);
+        $hours = uptime_hours($seconds);
+        %uptime = (
+            'hours'   => $hours,
+            'days'    => $days,
+            'seconds' => $seconds,
+        );
+    } elsif ($os eq "win32") {
+        my $msecs = Win32::Uptime->uptime();
+
+        # process into seconds
+        $seconds = $msecs / 1000;
+        $days = uptime_days($seconds);
+        $hours = uptime_hours($seconds);
+        %uptime = (
+            'hours'   => $hours,
+            'days'    => $days,
+            'seconds' => $seconds,
+        );
+    }
+
+    if ($format eq "plain") {
+        say "system_uptime => { \"seconds\" => $seconds, \"hours\" => $hours, \"days\" => $days, \"uptime\" => $days days }";
+        say "uptime => $days days";
+        say "uptime_days => $days";
+        say "uptime_hours => $hours";
+        say "uptime_seconds => $seconds";        
+    } elsif ($format eq "json") {
+        
+    } elsif ($format eq "perleval") {
+        
+    }
+}
+
+our sub provides {
+    say "system_uptime";
+    say "uptime";
+    say "uptime_days";
+    say "uptime_hours";
+    say "uptime_seconds";
+}
+
+1;
