@@ -10,12 +10,12 @@
 # You may obtain a copy of the License at
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
-#    
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License. 
+# limitations under the License.
 #
 
 package Discovery::Util;
@@ -41,9 +41,11 @@ use Discovery::Config;
 use Discovery::Logger;
 use Data::Dumper;
 use File::Basename;
+use JSON::XS;
 use Module::Pluggable::Object;
+use YAML::XS;
 
-my $VERSION = 0.1;
+our $VERSION = 0.1;
 
 # private variables
 my %config;
@@ -192,9 +194,52 @@ our sub discovery_loop ($self, $config) {
     );
 
     # generate path
+    my %value;
+    my %values;
     foreach my $plugin ($finder->plugins) {
         say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Plugin: $plugin" if $config{cli}->{debug};
-        $plugin->runme($os, 'plain');
+        %value = $plugin->runme($os);
+        %values = (%values, %value);
+    }
+
+    my $json;
+    if ($config{'general'}->{'output_format'} eq 'json') {
+        $json = JSON::XS->new;
+        $json = $json->pretty;
+        say $json->encode(\%values);
+    } elsif ($config{'general'}->{'output_format'} eq 'yaml') {
+        say Dump(\%values);
+    } elsif ($config{'general'}->{'output_format'} eq 'perleval') {
+        say Dumper(\%values);
+    } elsif ($config{'general'}->{'output_format'} eq 'plain') {
+        foreach my $toplevel_key (keys %values) {
+            # get the values from the entry
+            my $value = $values{$toplevel_key};
+            if (ref($value) eq 'HASH') {
+                # dereference the child hash
+                my %child_hash = %{$value};
+                foreach my $child_key (keys %child_hash) {
+                    my $child_value = $child_hash{$child_key};
+                    if (ref($child_value) eq 'HASH') {
+                        my %grandchild_hash = %{$child_value};
+                        foreach my $grandchild_key (keys %grandchild_hash) {
+                            my $grandchild_value = $grandchild_hash{$grandchild_key};
+                            if (ref($grandchild_value) eq 'HASH') {
+                                say "Too deep in nesting!";
+                                exit -1;
+                            } else {
+                                say "${toplevel_key}_${child_key}_${grandchild_key}=\"$grandchild_value\"";
+                            }
+                        }
+                    } else {
+                        say "${toplevel_key}_${child_key}=\"${child_value}\"";
+                    }
+                }
+            } else {
+                say "$value";
+                say ${toplevel_key};
+            }
+        }
     }
 }
 

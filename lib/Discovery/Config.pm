@@ -98,11 +98,19 @@ our sub _initialize ($self, $config, %flags) {
 
 our sub get_general_config ($self, $config, %flags) {
     my %general_config;
+    say Dumper(%flags) if $flags{debug};
+
     $general_config{'custom_dir'}       = $config->val('General', 'CustomDirectory');
     $general_config{'enable_custom'}    = $config->val('General', 'EnableCustom');
-    $general_config{'output_format'}    = $config->val('General', 'OutputFormat');
+    unless (exists $flags{'format'}) {
+        $general_config{'output_format'}    = $config->val('General', 'OutputFormat');
+    } else {
+        $general_config{'output_format'}    = $flags{'format'};
+    }
     $general_config{'debug_log'}        = $config->val('General', 'DebugLogPath');
     $general_config{'logfile'}          = $config->val('General', 'LogFilePath');
+
+    say Dumper(%general_config) if $flags{debug};
 
     return %general_config;
 }
