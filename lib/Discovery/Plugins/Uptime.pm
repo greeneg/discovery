@@ -70,7 +70,7 @@ my sub uptime_hours ($seconds) {
     return int $hours;
 }
 
-our sub runme ($self, $os, $format) {
+our sub runme ($self, $os) {
     my $sub = (caller(0))[3];
 
     my $seconds;
@@ -101,25 +101,17 @@ our sub runme ($self, $os, $format) {
         );
     }
 
-    if ($format eq "plain") {
-        say "system_uptime => { \"seconds\" => $seconds, \"hours\" => $hours, \"days\" => $days, \"uptime\" => $days days }";
-        say "uptime => $days days";
-        say "uptime_days => $days";
-        say "uptime_hours => $hours";
-        say "uptime_seconds => $seconds";        
-    } elsif ($format eq "json") {
-        
-    } elsif ($format eq "perleval") {
-        
-    }
-}
+    my %values;
+    $values{'uptime'}->{'multi_value'} = { 'seconds' => $seconds,
+                                           'hours'   => $hours,
+                                           'days'    => $days,
+                                           'uptime'  => "$days days" };
+    $values{'uptime'}->{'uptime'}      = "$days days";
+    $values{'uptime'}->{'days'}        = $days;
+    $values{'uptime'}->{'hours'}       = $hours;
+    $values{'uptime'}->{'seconds'}     = $seconds;
 
-our sub provides {
-    say "system_uptime";
-    say "uptime";
-    say "uptime_days";
-    say "uptime_hours";
-    say "uptime_seconds";
+    return %values;
 }
 
 1;
