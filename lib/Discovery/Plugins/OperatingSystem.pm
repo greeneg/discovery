@@ -83,21 +83,29 @@ sub get_darwin_distribution ($self, $system) {
     return $distribution;
 }
 
+sub get_linux_distribution {
+    my $distribution;
+
+    if (-f '/etc/os-release') {
+        open my $os_release, '/etc/os-release';
+        foreach my $l (<$os_release>) {
+            if ($l =~ /^ID\=.*$/) {
+                (undef, $distribution) = split('=', $l);
+                chomp($distribution);
+            }
+        }
+        close $os_release;
+    }
+
+    return $distribution;
+}
+
 sub get_distribution ($self, $system, $release, $build) {
     my $distribution = '';
     if ($system eq 'Darwin') {
         $distribution = get_darwin_distribution($self, $system);
     } elsif ($system eq 'Linux') {
-        if (-f '/etc/os-release') {
-            open my $os_release, '/etc/os-release';
-            foreach my $l (<$os_release>) {
-                if ($l =~ /^ID\=.*$/) {
-                    (undef, $distribution) = split('=', $l);
-                    chomp($distribution);
-                }
-            }
-            close $os_release;
-        }
+        $distribution = get_linux_distribution();
     }
 
     return $distribution;
