@@ -160,13 +160,32 @@ sub get_darwin_os_name ($self, $system) {
     return $os_name;
 }
 
+sub get_linux_os_name {
+    my $os_name;
+
+    if (-f '/etc/os-release') {
+        open my $os_release, '/etc/os-release';
+        foreach my $l (<$os_release>) {
+            if ($l =~ /^PRETTY_NAME\=.*$/) {
+                (undef, $os_name) = split('=', $l);
+                chomp($os_name);
+                # strip quotes
+                $os_name =~ s/"//g;
+            }
+        }
+        close $os_release;
+    }
+
+    return $os_name;
+}
+
 sub get_name ($self, $system) {
     my $os_name = '';
 
     if ($system eq 'Darwin') {
         $os_name = get_darwin_os_name($self, $system);
     } elsif ($system eq 'Linux') {
-
+        $os_name = get_linux_os_name();
     }
 
     return $os_name;
