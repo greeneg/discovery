@@ -88,7 +88,16 @@ sub get_distribution ($self, $system, $release, $build) {
     if ($system eq 'Darwin') {
         $distribution = get_darwin_distribution($self, $system);
     } elsif ($system eq 'Linux') {
-
+        if (-f '/etc/os-release') {
+            open my $os_release, '/etc/os-release';
+            foreach my $l (<$os_release>) {
+                if ($l =~ /^ID\=.*$/) {
+                    (undef, $distribution) = split('=', $l);
+                    chomp($distribution);
+                }
+            }
+            close $os_release;
+        }
     }
 
     return $distribution;
