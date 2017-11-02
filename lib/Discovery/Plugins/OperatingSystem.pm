@@ -36,6 +36,7 @@ no warnings "experimental::lexical_subs";
 no warnings "experimental::signatures";
 use feature 'lexical_subs';
 use feature 'signatures';
+use feature 'switch';
 use English;
 use utf8;
 
@@ -111,6 +112,66 @@ sub get_distribution ($self, $system, $release, $build) {
     return $distribution;
 }
 
+sub get_darwin_os_name ($self, $system) {
+    my $sub = (caller(0))[3];
+    my $os_name = '';
+
+    if (-x '/usr/sbin/system_profiler') {
+        # get the dump from system_profiler as XML
+        chomp(my @dump = qx|/usr/sbin/system_profiler SPSoftwareDataType|);
+        # we only want the system version
+        foreach my $line (@dump) {
+            next if $line !~ /System Version/;
+            # parse this into two lines
+            (undef, $os_name) = split(':', $line);
+            # we only want the non-version nor build bits
+            # remove all numbers
+            $os_name =~ s/\d//g;
+            # remove the dots from what was the version string
+            $os_name =~ s/\.//g;
+            # nuke the rest of the build info
+            $os_name =~ s/\(\w+\)//g;
+            # strip leading whitespace
+            $os_name = trim($os_name);
+        }
+        # now, let's get the OS' series number
+        my $series = '';
+        my $version = '';
+        if (-x '/usr/bin/sw_vers') {
+            chomp($version = qx|/usr/bin/sw_vers -productVersion|);
+            # now split so we get the series
+            my ($maj, $min, undef) = split(/\./, $version);
+            # now, reconstruct the series
+            $series = "$maj.$min";
+        }
+        my $code_name = '';
+        if ($series eq '10.12') {
+            $code_name = 'Sierra';
+        } elsif ($series eq '10.13') {
+            $code_name = 'High Sierra';
+        }
+        # assemble the system name
+        $os_name = "$os_name $code_name $version";
+    } else {
+        # insufficient tooling, so call this darwin and move on
+        $os_name = $system;
+    }
+
+    return $os_name;
+}
+
+sub get_name ($self, $system) {
+    my $os_name = '';
+
+    if ($system eq 'Darwin') {
+        $os_name = get_darwin_os_name($self, $system);
+    } elsif ($system eq 'Linux') {
+
+    }
+
+    return $os_name;
+}
+
 our sub runme ($self, $os) {
     my %values;
 
@@ -118,7 +179,7 @@ our sub runme ($self, $os) {
 
     $values{'operating_system'}->{'family'} = lc($system);
     $values{'operating_system'}->{'distribution'} = get_distribution($self, $system, $release, $build);
-#    $values{'operating_system'}->{'name'} = get_name($self, $system, $release, $build);
+    $values{'operating_system'}->{'name'} = get_name($self, $system);
 #    $values{'operating_system'}->{'version'} = get_version();
 
     return %values;
