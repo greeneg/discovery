@@ -191,6 +191,52 @@ sub get_name ($self, $system) {
     return $os_name;
 }
 
+sub get_darwin_version ($self, $version) {
+    my $os_version = '';
+
+    my $_version = '';
+    if (-x '/usr/bin/sw_vers') {
+        chomp($_version = qx|/usr/bin/sw_vers -productVersion|);
+        $os_version = $_version;
+    } else {
+        # must be running on an Open Darwin release, which is versioned after
+        # the Kernel
+        $os_version = $version;
+    }
+
+    return $os_version;
+}
+
+sub get_linux_version {
+    my $os_version;
+
+    if (-f '/etc/os-release') {
+        open my $os_release, '/etc/os-release';
+        foreach my $l (<$os_release>) {
+            if ($l =~ /^VERSION\=.*$/) {
+                (undef, $os_version) = split('=', $l);
+                chomp($os_version);
+                $os_version =~ s/"//g;
+            }
+        }
+        close $os_release;
+    }
+
+    return $os_version;
+}
+
+sub get_version ($self, $system, $version) {
+    my $os_version = '';
+
+    if ($system eq 'Darwin') {
+        $os_version = get_darwin_version($self, $version);
+    } elsif ($system eq 'Linux') {
+        $os_version = get_linux_version();
+    }
+
+    return $os_version;
+}
+
 our sub runme ($self, $os) {
     my %values;
 
@@ -199,7 +245,9 @@ our sub runme ($self, $os) {
     $values{'operating_system'}->{'family'} = lc($system);
     $values{'operating_system'}->{'distribution'} = get_distribution($self, $system, $release, $build);
     $values{'operating_system'}->{'name'} = get_name($self, $system);
-#    $values{'operating_system'}->{'version'} = get_version();
+    $values{'operating_system'}->{'version'} = get_version($self, $system, $release);
+    $values{'operating_system'}->{'kernel_version'} = $release;
+    $values{'operating_system'}->{'kernel_build'} = $build;
 
     return %values;
 }
