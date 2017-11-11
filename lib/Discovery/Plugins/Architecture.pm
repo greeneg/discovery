@@ -64,7 +64,7 @@ our sub isX86Capable ($self, $hw) {
 
 our sub runme ($self, $os) {
     my %values;
-    if ($os eq 'darwin') {
+    if ($os eq 'darwin' || $os eq 'linux') {
         my (undef, undef, undef, undef, $hw) = POSIX::uname();
 
         $values{'architecture'}->{'architecture'}  = $hw;
