@@ -205,6 +205,7 @@ our sub discovery_loop ($self, $config) {
     my $json;
     if ($config{'general'}->{'output_format'} eq 'json') {
         $json = JSON::XS->new;
+        $json = $json->convert_blessed([1]);
         $json = $json->pretty;
         say $json->encode(\%values);
     } elsif ($config{'general'}->{'output_format'} eq 'yaml') {
