@@ -237,6 +237,33 @@ sub get_version ($self, $system, $version) {
     return $os_version;
 }
 
+sub get_xenu_build ($self, $build) {
+    my $kernel_build = '';
+
+    my $_build;
+    if (-x '/usr/bin/sw_vers') {
+        chomp($_build = qx|/usr/bin/sw_vers -buildVersion|);
+        $kernel_build = $_build;
+    } else {
+        # use the long build string
+        $kernel_build = $build;
+    }
+
+    return $kernel_build;
+}
+
+sub get_build ($self, $system, $build) {
+    my $kernel_build = '';
+
+    if ($system eq 'Darwin') {
+        $kernel_build = get_xenu_build($self, $build);
+    } elsif ($system eq 'Linux') {
+        $kernel_build = $build;
+    }
+
+    return $kernel_build;
+}
+
 our sub runme ($self, $os) {
     my %values;
 
@@ -247,7 +274,7 @@ our sub runme ($self, $os) {
     $values{'operating_system'}->{'name'} = get_name($self, $system);
     $values{'operating_system'}->{'version'} = get_version($self, $system, $release);
     $values{'operating_system'}->{'kernel_version'} = $release;
-    $values{'operating_system'}->{'kernel_build'} = $build;
+    $values{'operating_system'}->{'kernel_build'} = get_build($self, $system, $build);
 
     return %values;
 }
