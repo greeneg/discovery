@@ -44,7 +44,8 @@ use lib "$FindBin::Bin/../lib";
 
 use Config;
 use Data::Dumper;
-use Net::Interface qw(:lower);
+use List::MoreUtils qw(only_index);
+use Net::Interface qw(:lower inet_ntoa full_inet_ntop);
 use POSIX;
 
 use constant INET  => 2;
@@ -57,7 +58,67 @@ sub new ($class) {
     return $self;
 }
 
-our sub runme ($self, $os) {
+my sub get_mask ($self, $addr, $cvt_addr, $interface, $type, $ip_addresses, $debug) {
+    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ if ($debug > 0);
+
+    my $addr_count_struct;
+
+    my $index = only_index { $_ eq $addr } @{$ip_addresses};
+    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ", Address Index for $cvt_addr: $index" if ($debug > 0);
+    my $mask = Net::Interface::mask2cidr($interface->netmask($type, $index));
+    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ", Netmask in CIDR for $cvt_addr: $mask" if ($debug > 0);
+    return $mask;
+}
+
+my sub create_addr_struct ($self, $int_info, $interface, $type, $ip_addresses, $debug) {
+    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ if ($debug > 0);
+
+    my $mask;
+    my $cvt_addr;
+    my $addr_info;
+    my @converted_addresses;
+
+    my $af_num;
+    my $af_size;
+    if ($type == INET) {
+        $af_num = 2;
+        $af_size = 4;
+    } elsif ($type == INET6) {
+        $af_num = 30;
+        $af_size = 16;
+    }
+
+    foreach my $addr (@{$ip_addresses}) {
+        if ($type == INET) {
+            say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ', v4 addr: ' . Net::Interface::inet_ntoa($addr) if ($debug > 0);
+        } elsif ($type == INET6) {
+            say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ', v6 addr: ' . Net::Interface::ipV6compress(Net::Interface::full_inet_ntop($addr)) if ($debug > 0);
+        }
+        if (exists $int_info->{$af_num}) {
+            say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ", AF type: $af_num" if ($debug > 0);
+            if ($int_info->{$af_num}->{'size'} eq $af_size) {
+                say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ", AF $af_num has size $af_size" if ($debug > 0);
+                if ($type == INET) {
+                    $cvt_addr = Net::Interface::inet_ntoa($addr);
+                    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__. ", Converted address: $cvt_addr" if ($debug > 0);
+                } elsif ($type == INET6) {
+                    $cvt_addr = Net::Interface::ipV6compress(Net::Interface::full_inet_ntop($addr));
+                    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__. ", Converted address: $cvt_addr" if ($debug > 0);
+                }
+                $mask = get_mask($self, $addr, $cvt_addr, $interface, $af_num, $ip_addresses, $debug);
+                say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__. ", Netmask: $mask" if ($debug > 0);
+                $addr_info = [ $cvt_addr, $mask ];
+                push(@converted_addresses, $addr_info);
+            }
+        }
+    }
+
+    return @converted_addresses;
+}
+
+our sub runme ($self, $os, $debug) {
+    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ if ($debug > 0);
+
     my %values;
 
     my @interfaces = Net::Interface->interfaces();
@@ -69,25 +130,19 @@ our sub runme ($self, $os) {
         my @ipv6_addresses = $interface->address(INET6);
 
         my @converted_addresses;
-        foreach my $addr (@ipv4_addresses) {
-            if (exists $int_info->{'2'}) {
-                if ($int_info->{'2'}->{'size'} eq 4) {
-                    push(@converted_addresses, Net::Interface::inet_ntoa($addr));
-                }
-            }
+        push(@converted_addresses, create_addr_struct($self, $int_info, $interface, INET, \@ipv4_addresses, $debug));
+        push(@converted_addresses, create_addr_struct($self, $int_info, $interface, INET6, \@ipv6_addresses, $debug));
+
+        no warnings;
+        my $hw_addr = '';
+        if ($int_info->{'mac'} ne undef) {
+            $hw_addr = Net::Interface::mac_bin2hex($int_info->{'mac'});
         }
-        foreach my $addr (@ipv6_addresses) {
-            if (exists $int_info->{'30'}) {
-                if ($int_info->{'30'}->{'size'} eq 16) {
-                    push(@converted_addresses, Net::Interface::ipV6compress(Net::Interface::full_inet_ntop($addr)));
-                }
-            }
-        }
+        use warnings;
 
         $values{'Network'}->{'Interfaces'}->{$interface}->{'name'} = "$interface";
         $values{'Network'}->{'Interfaces'}->{$interface}->{'address'} = \@converted_addresses;
-        $values{'Network'}->{'Interfaces'}->{$interface}->{'mac'} = "";
-        $values{'Network'}->{'Interfaces'}->{$interface}->{'mask'} = "";
+        $values{'Network'}->{'Interfaces'}->{$interface}->{'mac'} = $hw_addr;
     }
 
     return %values;
