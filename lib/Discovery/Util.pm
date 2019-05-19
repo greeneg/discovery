@@ -114,7 +114,7 @@ our sub print_help {
     say "       --short-version    Output only the version number";
     say "  Specific Options:";
     say "    -f|--format FORMAT    Print all output in the specified format.";
-    say "                          Supported formats are plain (the default), JSON, and";
+    say "                          Supported formats are JSON (default), YAML, and";
     say "                          perleval";
     say "    -c|--config FILE      Use a specific configuration file";
     say "       --no-custom-dir    Disable custom type tests";
@@ -178,6 +178,10 @@ our sub discovery_loop ($self, $config) {
 
     # deref the config reference back to a hash
     my %config = %{$config};
+    my $debug = $config{cli}->{debug};
+    if (! defined($debug)) {
+        $debug = 0;
+    }
 
     our @plugin_dirs = @{$config{'platform_defaults'}->{'custom_type_directory'}};
     if ($config{cli}->{debug}) {
@@ -198,7 +202,7 @@ our sub discovery_loop ($self, $config) {
     my %values;
     foreach my $plugin ($finder->plugins) {
         say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Plugin: $plugin" if $config{cli}->{debug};
-        %value = $plugin->runme($os);
+        %value = $plugin->runme($os, $debug);
         %values = (%values, %value);
     }
 
@@ -212,35 +216,6 @@ our sub discovery_loop ($self, $config) {
         say Dump(\%values);
     } elsif ($config{'general'}->{'output_format'} eq 'perleval') {
         say Dumper(\%values);
-    } elsif ($config{'general'}->{'output_format'} eq 'plain') {
-        foreach my $toplevel_key (keys %values) {
-            # get the values from the entry
-            my $value = $values{$toplevel_key};
-            if (ref($value) eq 'HASH') {
-                # dereference the child hash
-                my %child_hash = %{$value};
-                foreach my $child_key (keys %child_hash) {
-                    my $child_value = $child_hash{$child_key};
-                    if (ref($child_value) eq 'HASH') {
-                        my %grandchild_hash = %{$child_value};
-                        foreach my $grandchild_key (keys %grandchild_hash) {
-                            my $grandchild_value = $grandchild_hash{$grandchild_key};
-                            if (ref($grandchild_value) eq 'HASH') {
-                                say "Too deep in nesting!";
-                                exit -1;
-                            } else {
-                                say "${toplevel_key}_${child_key}_${grandchild_key}=\"$grandchild_value\"";
-                            }
-                        }
-                    } else {
-                        say "${toplevel_key}_${child_key}=\"${child_value}\"";
-                    }
-                }
-            } else {
-                say "$value";
-                say ${toplevel_key};
-            }
-        }
     }
 }
 

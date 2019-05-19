@@ -52,7 +52,7 @@ our $login_title;
 our $title;
 
 # initialize package globals, first exported ones
-$version     = 0.5;
+$version     = 0.6;
 $author      = 'Gary L. Greene, Jr.';
 $copyright   = 'Copyright 2017 YggdrasilSoft, LLC. All Rights Reserved.';
 $license     = 'Licensed under the Apache Public License version 2.0';
