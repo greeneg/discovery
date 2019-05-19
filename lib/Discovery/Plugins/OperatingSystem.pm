@@ -149,6 +149,8 @@ sub get_darwin_os_name ($self, $system) {
             $code_name = 'Sierra';
         } elsif ($series eq '10.13') {
             $code_name = 'High Sierra';
+        } elsif ($series eq '10.14') {
+            $code_name = 'Mojave'
         }
         # assemble the system name
         $os_name = "$os_name $code_name $version";
