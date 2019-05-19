@@ -62,7 +62,7 @@ our sub isX86Capable ($self, $hw) {
     return $retval;
 }
 
-our sub runme ($self, $os) {
+our sub runme ($self, $os, $debug) {
     my %values;
     if ($os eq 'darwin' || $os eq 'linux') {
         my (undef, undef, undef, undef, $hw) = POSIX::uname();

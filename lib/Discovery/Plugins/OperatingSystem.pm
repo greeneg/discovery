@@ -266,7 +266,7 @@ sub get_build ($self, $system, $build) {
     return $kernel_build;
 }
 
-our sub runme ($self, $os) {
+our sub runme ($self, $os, $debug) {
     my %values;
 
     my ($system, undef, $release, $build, undef) = POSIX::uname();

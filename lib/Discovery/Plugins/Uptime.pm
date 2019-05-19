@@ -70,7 +70,7 @@ my sub uptime_hours ($seconds) {
     return int $hours;
 }
 
-our sub runme ($self, $os) {
+our sub runme ($self, $os, $debug) {
     my $sub = (caller(0))[3];
 
     my $seconds;
