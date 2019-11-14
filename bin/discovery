@@ -60,26 +60,29 @@ my sub main ($flags, @arguments) {
     my $cfg = Discovery::Config->new();
     my %config = $cfg->load_config(%flags);
 
-    say STDERR "Dump of our config hash:" if $flags{debug};
-    say STDERR Dumper(%config) if $flags{debug};
+    my $debug = $config{'general'}->{'debug'};
+
+    say STDERR "Dump of our config hash:" if $debug;
+    say STDERR Dumper(%config) if $debug;
 
     # open the log for writing
     open(my $log, ">>", $config{'general'}->{'logfile'}) or
         die("Cannot open log file\n");
 
-    if ($flags{debug}) {
+    my $debug_log;
+    if ($debug) {
         # open debug log for writing
-        open(my $debug_log, ">>". $config{'general'}->{'debug_log'}) or
+        open($debug_log, ">>". $config{'general'}->{'debug_log'}) or
             die("Cannot open log file\n");
     }
 
     # some debugging boilder plate
-    say STDERR "RUNNING DISCOVERY" if $flags{debug};
+    say STDERR "RUNNING DISCOVERY" if $debug;
 
     # Now that we have the boiler-plate in place, set up our functions library
     # object
-    my $discovery = Discovery::Util->new(\%config, $flags{debug});
-    my $logger = Discovery::Logger->new(\%config, $flags{debug});
+    my $discovery = Discovery::Util->new(\%config, $debug);
+    my $logger = Discovery::Logger->new(\%config, $debug);
 
     my $appname = $discovery->app_name($0);
 
@@ -87,7 +90,12 @@ my sub main ($flags, @arguments) {
     $logger->logger($appname, $log, "---- NEW RUN ----");
 
     # Now, call the discovery loop
-    my $ret_data = $discovery->discovery_loop(\%config);
+    my $ret_data = $discovery->discovery_loop(\%config, $log, $debug_log, $debug);
+    $logger->logger($appname, $log, "---- END RUN ----");
+    close $log;
+    if ($debug) {
+        close $debug_log;
+    }
 }
 
 my %flags;

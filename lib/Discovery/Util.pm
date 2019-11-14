@@ -171,14 +171,14 @@ our sub print_version {
     say "Author: $Discovery::Constants::author";
 }
 
-our sub discovery_loop ($self, $config) {
+our sub discovery_loop ($self, $config, $log, $debug_log, $debug) {
+    my $logger = Discovery::Logger->new(\%config, $debug);
     my $sub = (caller(0))[3];
 
     my $os = $conf->get_os($config);
 
     # deref the config reference back to a hash
     my %config = %{$config};
-    my $debug = $config{cli}->{debug};
     if (! defined($debug)) {
         $debug = 0;
     }

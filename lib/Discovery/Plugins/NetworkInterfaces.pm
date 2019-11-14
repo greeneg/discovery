@@ -107,7 +107,10 @@ my sub create_addr_struct ($self, $int_info, $interface, $type, $ip_addresses, $
                 }
                 $mask = get_mask($self, $addr, $cvt_addr, $interface, $af_num, $ip_addresses, $debug);
                 say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__. ", Netmask: $mask" if ($debug > 0);
-                $addr_info = [ $cvt_addr, $mask ];
+                $addr_info = {
+                    "address" => $cvt_addr,
+                    "cidr_mask" => $mask
+                };
                 push(@converted_addresses, $addr_info);
             }
         }
@@ -134,14 +137,14 @@ our sub runme ($self, $os, $debug) {
         push(@converted_addresses, create_addr_struct($self, $int_info, $interface, INET6, \@ipv6_addresses, $debug));
 
         no warnings;
-        my $hw_addr = '';
+        my $hw_addr = undef;
         if ($int_info->{'mac'} ne undef) {
             $hw_addr = Net::Interface::mac_bin2hex($int_info->{'mac'});
         }
         use warnings;
 
         $values{'Network'}->{'Interfaces'}->{$interface}->{'name'} = "$interface";
-        $values{'Network'}->{'Interfaces'}->{$interface}->{'address'} = \@converted_addresses;
+        $values{'Network'}->{'Interfaces'}->{$interface}->{'addresses'} = \@converted_addresses;
         $values{'Network'}->{'Interfaces'}->{$interface}->{'mac'} = $hw_addr;
     }
 

@@ -65,17 +65,9 @@ our sub logger ($self, $appname, $log, @msg) {
     say $log "$ltime: $hname $appname: @msg";
 }
 
-
-our sub debug_logger ($self, $appname, $debug_log, @msg) {
-    my $ltime = strftime("%b %d %H:%M:%S", localtime(time));
-    my $hname = hostname;
-
-    say $debug_log "$ltime: $hname $appname: @msg";
-}
-
-our sub print_and_log ($self, $appname, $debug_log, @msg) {
-    $self->debug_logger($appname, $debug_log, @msg);
-    say STDOUT "@msg";
+our sub print_and_log ($self, $appname, $log, $fd, @msg) {
+    $self->logger($appname, $log, @msg);
+    say $fd "@msg";
 }
 
 1;
