@@ -52,11 +52,17 @@ sub new ($class) {
     return $self;   
 }
 
-our sub isX86Capable ($self, $hw) {
+our sub isX86Capable ($self, $os, $os_ver, $hw) {
     my $retval = 'false';
 
     if ($hw eq 'x86_64') {
         $retval = 'true';
+        if ($os eq 'darwin') {
+            my $os_maj_ver = substr($os_ver, 0, 2); # get the os series
+            if ($os_maj_ver >= '18') {
+                $retval = 'false'; # darwin 19 dropped 32bit support
+            }
+        }
     }
 
     return $retval;
@@ -65,10 +71,9 @@ our sub isX86Capable ($self, $hw) {
 our sub runme ($self, $os, $debug) {
     my %values;
     if ($os eq 'darwin' || $os eq 'linux') {
-        my (undef, undef, undef, undef, $hw) = POSIX::uname();
-
+        my (undef, undef, $os_ver, undef, $hw) = POSIX::uname();
         $values{'architecture'}->{'architecture'}  = $hw;
-        $values{'architecture'}->{'32bit_capable'} = $self->isX86Capable($hw);
+        $values{'architecture'}->{'32bit_capable'} = $self->isX86Capable($os, $os_ver, $hw);
     }
 
     return %values;
