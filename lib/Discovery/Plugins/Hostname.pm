@@ -24,7 +24,7 @@
 #                                                                                       #
 #########################################################################################
 
-package Discovery::Plugins::Uptime;
+package Discovery::Plugins::Hostname;
 
 use strict;
 use warnings;
@@ -43,15 +43,11 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 
 use boolean;
-
-BEGIN {
-    if ($OSNAME eq 'Linux' || $OSNAME eq 'Darwin') {
-        use Unix::Uptime;
-    } elsif ($OSNAME eq 'Win32') {
-        require Win32::Uptime;
-        import Win32::Uptime;
-    }
-}
+use Net::Domain qw(
+    hostname
+    hostdomain
+    domainname
+);
 
 sub new ($class) {
     my $self = {};
@@ -60,58 +56,12 @@ sub new ($class) {
     return $self;   
 }
 
-my sub uptime_days ($seconds) {
-    my $days = $seconds / 86400;
-
-    return int $days;
-}
-
-my sub uptime_hours ($seconds) {
-    my $hours = $seconds / 3600;
-
-    return int $hours;
-}
-
 our sub runme ($self, $os, $debug) {
-    my $sub = (caller(0))[3];
-
-    my $seconds;
-    my $hours;
-    my $days;
-    my %uptime;
-
-    if ($os eq "linux" || $os eq 'darwin') {
-        $seconds = Unix::Uptime->uptime();
-        $days = uptime_days($seconds);
-        $hours = uptime_hours($seconds);
-        %uptime = (
-            'hours'   => $hours,
-            'days'    => $days,
-            'seconds' => $seconds,
-        );
-    } elsif ($os eq "win32") {
-        my $msecs = Win32::Uptime->uptime();
-
-        # process into seconds
-        $seconds = $msecs / 1000;
-        $days = uptime_days($seconds);
-        $hours = uptime_hours($seconds);
-        %uptime = (
-            'hours'   => $hours,
-            'days'    => $days,
-            'seconds' => $seconds,
-        );
-    }
-
     my %values;
-    $values{'uptime'}->{'multi_value'} = { 'seconds' => $seconds,
-                                           'hours'   => $hours,
-                                           'days'    => $days,
-                                           'uptime'  => "$days days" };
-    $values{'uptime'}->{'uptime'}      = "$days days";
-    $values{'uptime'}->{'days'}        = $days;
-    $values{'uptime'}->{'hours'}       = $hours;
-    $values{'uptime'}->{'seconds'}     = $seconds;
+
+    $values{'Network'}->{'Hostname'}->{'domain'} = hostdomain();
+    $values{'Network'}->{'Hostname'}->{'fqdn'} = domainname();
+    $values{'Network'}->{'Hostname'}->{'host'} = hostname();
 
     return %values;
 }

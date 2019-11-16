@@ -73,8 +73,8 @@ our sub runme ($self, $os, $debug) {
     my %values;
     if ($os eq 'darwin' || $os eq 'linux') {
         my (undef, undef, $os_ver, undef, $hw) = POSIX::uname();
-        $values{'architecture'}->{'architecture'}  = $hw;
-        $values{'architecture'}->{'32bit_capable'} = $self->isX86Capable($os, $os_ver, $hw);
+        $values{'Architecture'}->{'architecture'}  = $hw;
+        $values{'Architecture'}->{'32bit_capable'} = $self->isX86Capable($os, $os_ver, $hw);
     }
 
     return %values;
