@@ -5,7 +5,7 @@
 # Application: discovery.pl                                                             #
 # Summary:     A System Discovery Tool                                                  #
 # Author:      Gary L. Greene, Jr. <greeneg@yggdrasilsoft.com>                          #
-# Copyright:   2011-2017 YggdrasilSoft, LLC.                                            #
+# Copyright:   2011-2019 YggdrasilSoft, LLC.                                            #
 # License:     Apache Public License, v2                                                #
 #                                                                                       #
 #=======================================================================================#
@@ -42,6 +42,7 @@ use utf8;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
+use boolean;
 use Config;
 use POSIX;
 
@@ -79,4 +80,4 @@ our sub runme ($self, $os, $debug) {
     return %values;
 }
 
-1;
+true;
