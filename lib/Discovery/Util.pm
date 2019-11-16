@@ -1,22 +1,28 @@
 #!/usr/bin/env perl
-#
-# Author: Gary Greene <greeneg@tolharadys.net>
-# Copyright: 2017 YggdrasilSoft, LLC. All Rights Reserved
-#
-##########################################################################
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
+
+#########################################################################################
+#                                                                                       #
+# Application: discovery.pl                                                             #
+# Summary:     A System Discovery Tool                                                  #
+# Author:      Gary L. Greene, Jr. <greeneg@yggdrasilsoft.com>                          #
+# Copyright:   2011-2019 YggdrasilSoft, LLC.                                            #
+# License:     Apache Public License, v2                                                #
+#                                                                                       #
+#=======================================================================================#
+#                                                                                       #
+# Licensed under the Apache License, Version 2.0 (the "License");                       #
+# you may not use this file except in compliance with the License.                      #
+# You may obtain a copy of the License at                                               #
+#                                                                                       #
+#     http://www.apache.org/licenses/LICENSE-2.0                                        #
+#                                                                                       #
+# Unless required by applicable law or agreed to in writing, software                   #
+# distributed under the License is distributed on an "AS IS" BASIS,                     #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.              #
+# See the License for the specific language governing permissions and                   #
+# limitations under the License.                                                        #
+#                                                                                       #
+#########################################################################################
 
 package Discovery::Util;
 
@@ -41,6 +47,7 @@ use Discovery::Config;
 use Discovery::Logger;
 use Data::Dumper;
 use File::Basename;
+use Hash::Merge qw(merge);
 use JSON::XS;
 use Module::Pluggable::Object;
 use YAML::XS;
@@ -205,7 +212,7 @@ our sub discovery_loop ($self, $config, $log, $debug_log, $debug) {
         say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__,
           ": Plugin: $plugin" if ($config{cli}->{debug} eq 'true');
         %value = $plugin->runme($os, $debug);
-        %values = (%values, %value);
+        %values = %{ merge(\%values, \%value) };
     }
 
     my $json;
