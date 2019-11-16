@@ -92,6 +92,7 @@ sub get_linux_distribution {
         foreach my $l (<$os_release>) {
             if ($l =~ /^ID\=.*$/) {
                 (undef, $distribution) = split('=', $l);
+                $distribution =~ s/"//g;
                 chomp($distribution);
             }
         }
@@ -215,7 +216,7 @@ sub get_linux_version {
     if (-f '/etc/os-release') {
         open my $os_release, '/etc/os-release';
         foreach my $l (<$os_release>) {
-            if ($l =~ /^VERSION\=.*$/) {
+            if ($l =~ /^VERSION_ID\=.*$/) {
                 (undef, $os_version) = split('=', $l);
                 chomp($os_version);
                 $os_version =~ s/"//g;
