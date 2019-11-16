@@ -75,6 +75,8 @@ our sub runme ($self, $os, $debug) {
         my @output = qx|$path|;
         if (! defined $output[0]) {
             $host_type = 'physical';
+        } else {
+            $host_type = $output[0];
         }
     }
 
