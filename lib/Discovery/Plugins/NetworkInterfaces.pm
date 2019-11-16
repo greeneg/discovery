@@ -59,19 +59,21 @@ sub new ($class) {
 }
 
 my sub get_mask ($self, $addr, $cvt_addr, $interface, $type, $ip_addresses, $debug) {
-    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ if ($debug > 0);
+    say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__ if ($debug eq 'true');
 
     my $addr_count_struct;
 
     my $index = only_index { $_ eq $addr } @{$ip_addresses};
-    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ", Address Index for $cvt_addr: $index" if ($debug > 0);
+    say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__,
+      ", Address Index for $cvt_addr: $index" if ($debug eq 'true');
     my $mask = Net::Interface::mask2cidr($interface->netmask($type, $index));
-    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ", Netmask in CIDR for $cvt_addr: $mask" if ($debug > 0);
+    say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__,
+      ", Netmask in CIDR for $cvt_addr: $mask" if ($debug eq 'true');
     return $mask;
 }
 
 my sub create_addr_struct ($self, $int_info, $interface, $type, $ip_addresses, $debug) {
-    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ if ($debug > 0);
+    say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__ if ($debug eq 'true');
 
     my $mask;
     my $cvt_addr;
@@ -90,23 +92,30 @@ my sub create_addr_struct ($self, $int_info, $interface, $type, $ip_addresses, $
 
     foreach my $addr (@{$ip_addresses}) {
         if ($type == INET) {
-            say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ', v4 addr: ' . Net::Interface::inet_ntoa($addr) if ($debug > 0);
+            say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__,
+              ', v4 addr: ', Net::Interface::inet_ntoa($addr) if ($debug eq 'true');
         } elsif ($type == INET6) {
-            say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ', v6 addr: ' . Net::Interface::ipV6compress(Net::Interface::full_inet_ntop($addr)) if ($debug > 0);
+            say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__,
+              ', v6 addr: ', Net::Interface::ipV6compress(Net::Interface::full_inet_ntop($addr)) if ($debug eq 'true');
         }
         if (exists $int_info->{$af_num}) {
-            say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ", AF type: $af_num" if ($debug > 0);
+            say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__,
+              ", AF type: $af_num" if ($debug eq 'true');
             if ($int_info->{$af_num}->{'size'} eq $af_size) {
-                say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ . ", AF $af_num has size $af_size" if ($debug > 0);
+                say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__,
+                  ", AF $af_num has size $af_size" if ($debug eq 'true');
                 if ($type == INET) {
                     $cvt_addr = Net::Interface::inet_ntoa($addr);
-                    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__. ", Converted address: $cvt_addr" if ($debug > 0);
+                    say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__,
+                      ", Converted address: $cvt_addr" if ($debug eq 'true');
                 } elsif ($type == INET6) {
                     $cvt_addr = Net::Interface::ipV6compress(Net::Interface::full_inet_ntop($addr));
-                    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__. ", Converted address: $cvt_addr" if ($debug > 0);
+                    say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__,
+                      ", Converted address: $cvt_addr" if ($debug eq 'true');
                 }
                 $mask = get_mask($self, $addr, $cvt_addr, $interface, $af_num, $ip_addresses, $debug);
-                say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__. ", Netmask: $mask" if ($debug > 0);
+                say 'Sub: ', (caller(0))[3], ', line number: ', __LINE__,
+                  ", Netmask: $mask" if ($debug eq 'true');
                 $addr_info = {
                     "address" => $cvt_addr,
                     "cidr_mask" => $mask
@@ -120,21 +129,27 @@ my sub create_addr_struct ($self, $int_info, $interface, $type, $ip_addresses, $
 }
 
 our sub runme ($self, $os, $debug) {
-    say 'Sub: '. (caller(0))[3] . ', line number: ' . __LINE__ if ($debug > 0);
+    my $sub = (caller(0))[3];
+    say 'Sub: $sub: line number: ', __LINE__ if ($debug eq 'true');
 
     my %values;
 
     my @interfaces = Net::Interface->interfaces();
 
     for my $interface (@interfaces) {
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": Interface: $interface" if ($debug eq 'true');
         my $int_info = $interface->info();
 
+        say "INTERFACE DUMP: " . Dumper($interface) if ($debug eq 'true');
         my @ipv4_addresses = $interface->address(INET);
         my @ipv6_addresses = $interface->address(INET6);
 
         my @converted_addresses;
-        push(@converted_addresses, create_addr_struct($self, $int_info, $interface, INET, \@ipv4_addresses, $debug));
-        push(@converted_addresses, create_addr_struct($self, $int_info, $interface, INET6, \@ipv6_addresses, $debug));
+        push(@converted_addresses, create_addr_struct($self, $int_info, $interface,
+              INET, \@ipv4_addresses, $debug));
+        push(@converted_addresses, create_addr_struct($self, $int_info, $interface,
+              INET6, \@ipv6_addresses, $debug));
 
         no warnings;
         my $hw_addr = undef;

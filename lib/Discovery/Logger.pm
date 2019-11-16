@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -T
+#!/usr/bin/env perl
 #
 # Author: Gary Greene <greeneg@tolharadys.net>
 # Copyright: 2017 YggdrasilSoft, LLC. All Rights Reserved
@@ -52,7 +52,8 @@ sub new ($class, $config, $DEBUG) {
 our sub _initialize ($self, $config, $debug) {
     my $sub = (caller(0))[3];
 
-    say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Setting up Logger object" if $debug;
+    say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__,
+      ": Setting up Logger object" if ($debug eq 'true');
 
     %config = %{$config};
     $DEBUG = $debug;

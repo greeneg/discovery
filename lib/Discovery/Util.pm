@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -T
+#!/usr/bin/env perl
 #
 # Author: Gary Greene <greeneg@tolharadys.net>
 # Copyright: 2017 YggdrasilSoft, LLC. All Rights Reserved
@@ -65,7 +65,7 @@ sub new ($class, $config, $DEBUG) {
 our sub _initialize ($self, $config, $debug) {
     my $sub = (caller(0))[3];
 
-    say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Setting up Util object" if $debug;
+    say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Setting up Util object" if ($debug eq 'true');
 
     $conf = Discovery::Config->new();
     %config = %{$config};
@@ -185,9 +185,10 @@ our sub discovery_loop ($self, $config, $log, $debug_log, $debug) {
 
     our @plugin_dirs = @{$config{'platform_defaults'}->{'custom_type_directory'}};
     if ($config{cli}->{debug}) {
-        say STDERR __PACKAGE__, ': ', $sub, ': ', __LINE__, ': Plugin Search Directories: ';
+        say STDERR __PACKAGE__, ': ', $sub, ': ', __LINE__,
+          ': Plugin Search Directories: ' if ($debug eq 'true');
         foreach my $dir (@plugin_dirs) {
-            say STDERR "\t$dir";
+            say STDERR "\t$dir" if ($debug eq 'true');
         }
     }
 
@@ -201,7 +202,8 @@ our sub discovery_loop ($self, $config, $log, $debug_log, $debug) {
     my %value;
     my %values;
     foreach my $plugin ($finder->plugins) {
-        say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Plugin: $plugin" if $config{cli}->{debug};
+        say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__,
+          ": Plugin: $plugin" if ($config{cli}->{debug} eq 'true');
         %value = $plugin->runme($os, $debug);
         %values = (%values, %value);
     }
@@ -211,11 +213,11 @@ our sub discovery_loop ($self, $config, $log, $debug_log, $debug) {
         $json = JSON::XS->new;
         $json = $json->convert_blessed([1]);
         $json = $json->pretty;
-        say $json->encode(\%values);
+        print $json->encode(\%values);
     } elsif ($config{'general'}->{'output_format'} eq 'yaml') {
-        say Dump(\%values);
+        print Dump(\%values);
     } elsif ($config{'general'}->{'output_format'} eq 'perleval') {
-        say Dumper(\%values);
+        print Dumper(\%values);
     }
 }
 

@@ -60,10 +60,10 @@ my sub main ($flags, @arguments) {
     my $cfg = Discovery::Config->new();
     my %config = $cfg->load_config(%flags);
 
-    my $debug = $config{'general'}->{'debug'};
+    my $debug = $config{'cli'}->{'debug'};
 
-    say STDERR "Dump of our config hash:" if $debug;
-    say STDERR Dumper(%config) if $debug;
+    say STDERR "Dump of our config hash:" if ($debug eq 'true');
+    say STDERR Dumper(%config) if ($debug eq 'true');
 
     # open the log for writing
     open(my $log, ">>", $config{'general'}->{'logfile'}) or
@@ -77,7 +77,7 @@ my sub main ($flags, @arguments) {
     }
 
     # some debugging boilder plate
-    say STDERR "RUNNING DISCOVERY" if $debug;
+    say STDERR "RUNNING DISCOVERY" if ($debug eq 'true');
 
     # Now that we have the boiler-plate in place, set up our functions library
     # object
@@ -101,9 +101,9 @@ my sub main ($flags, @arguments) {
 my %flags;
 # set some defaults
 %flags = (
-    'debug'    => 0,
-    'trace'    => 0,
-    'no_c_dir' => 0
+    'debug'    => 'false',
+    'no_c_dir' => 'false',
+    'log_lvl'  => 'none'
 );
 
 GetOptions (
@@ -111,12 +111,11 @@ GetOptions (
     'v|version'        => sub { &Discovery::Util::print_version && exit 0 },
     'c|config=s'       => sub { $flags{cfgfile}    = $ARG[1] },
     'f|format=s'       => sub { $flags{format}     = $ARG[1] },
-    'd|debug'          => sub { $flags{debug}      = 1 },
-    't|trace'          => sub { $flags{trace}      = 1 },
+    'd|debug'          => sub { $flags{debug}      = 'true' },
     'l|log-level=s'    => sub { $flags{log_lvl}    = $ARG[1] },
     'x|custom-dir=s'   => sub { $flags{custom_dir} = $ARG[1] },
     'short-version'    => sub { say $Discovery::Constants::version; exit 0 },
-    'no-custom-dir'    => sub { $flags{no_c_dir} = 1 }
+    'no-custom-dir'    => sub { $flags{no_c_dir} = 'false' }
 ) or die "See help for proper usage\n";
 
 # main pass in the arguments

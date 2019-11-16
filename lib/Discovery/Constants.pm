@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -T
+#!/usr/bin/env perl
 #
 # Author: Gary Greene <greeneg@tolharadys.net>
 # Copyright: 2017 YggdrasilSoft, LLC. All Rights Reserved
@@ -34,11 +34,11 @@ BEGIN {
     $VERSION     = 1.0;
     @ISA         = qw(Exporter);
     @EXPORT      = qw();
-    %EXPORT_TAGS = ( All => [ qw($version $author $license $login_title $title $copyright) ] );     # eg: TAG => [ qw!name1 name2! ],
+    %EXPORT_TAGS = ( All => [ qw($version $author $license $title $copyright) ] );     # eg: TAG => [ qw!name1 name2! ],
 
     # your exported package globals go here,
     # as well as any optionally exported functions
-    @EXPORT_OK   = qw($version $author $license $login_title $title $copyright);
+    @EXPORT_OK   = qw($version $author $license $title $copyright);
 }
 
 our @EXPORT_OK;
@@ -48,7 +48,6 @@ our $author;
 our $version;
 our $copyright;
 our $license;
-our $login_title;
 our $title;
 
 # initialize package globals, first exported ones
@@ -56,8 +55,7 @@ $version     = 0.6;
 $author      = 'Gary L. Greene, Jr.';
 $copyright   = 'Copyright 2017 YggdrasilSoft, LLC. All Rights Reserved.';
 $license     = 'Licensed under the Apache Public License version 2.0';
-$title       = 'ConfMan Discovery';
-$login_title = "$title - login";
+$title       = 'StageMgr Discovery';
 
 END { }       # module clean-up code here (global destructor)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -T
+#!/usr/bin/env perl
 #
 # Author: Gary Greene <greeneg@tolharadys.net>
 # Copyright: 2017 YggdrasilSoft, LLC. All Rights Reserved
@@ -57,10 +57,13 @@ sub new ($class) {
 our sub _initialize ($self, $config, %flags) {
     my $sub = (caller(0))[3];
 
-    say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__, ": Setting up Config object" if $flags{debug};
+    say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__,
+      ": Setting up Config object" if ($flags{debug} eq 'true');
 
     %config = %{$config};
 
+    say STDERR __PACKAGE__, ': ', "$sub: ", __LINE__,
+      ": Setting platform defaults" if ($flags{debug} eq 'true');
     given ($self->get_os(\$config)) {
         when (/^darwin/) {
             $config{'platform_defaults'} = {
@@ -97,46 +100,111 @@ our sub _initialize ($self, $config, %flags) {
 }
 
 our sub get_general_config ($self, $config, %flags) {
-    my %general_config;
-    say Dumper(%flags) if $flags{debug};
+    my $sub = (caller(0))[3];
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__ if ($flags{debug} eq 'true');
 
-    $general_config{'custom_dir'}       = $config->val('General', 'CustomDirectory');
-    $general_config{'enable_custom'}    = $config->val('General', 'EnableCustom');
+    my %general_config;
+    my $enable_custom = $config->val('General', 'EnableCustom');
+    if ($enable_custom eq 'true' && $flags{'no_c_dir'} eq 'false') {
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": load setting for custom plugin directory: $enable_custom" if ($flags{debug} eq 'true');
+        $general_config{'enable_custom'} = $enable_custom;
+        my $c_dir = $config->val('General', 'CustomDirectory');
+        if ($c_dir ne '') {
+            say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+              ": setting custom plugin directory to $c_dir" if ($flags{debug} eq 'true');
+            $general_config{'custom_dir'}    = $c_dir;
+        } else {
+            say STDERR __PACKAGE__, ": $sub: ", __LINE__, 
+              ": CustomDirectory setting missing, using platform defaults" if ($flags{debug} eq 'true');
+            $general_config{'custom_dir'}    = '';
+        }
+    } else {
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": EnableCustom == false, so disable option" if ($flags{debug} eq 'true');
+        $general_config{'enable_custom'} = 'false';
+        $general_config{'custom_dir'}    = '';
+    }
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": Settings enable_custom == $general_config{enable_custom}\n",
+      "           custom_dir    == $general_config{custom_dir}" if ($flags{debug} eq 'true');
+
     unless (exists $flags{'format'}) {
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": No flag given, setting OutputFormat from configuration file" if ($flags{debug} eq 'true');
         $general_config{'output_format'}    = $config->val('General', 'OutputFormat');
     } else {
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": flag passed, setting OutputFormat" if ($flags{debug} eq 'true');
         $general_config{'output_format'}    = $flags{'format'};
     }
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": Setting output_format == $general_config{output_format}" if ($flags{debug} eq 'true');
+
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": setting path to log files" if ($flags{debug} eq 'true');
     $general_config{'debug_log'}        = $config->val('General', 'DebugLogPath');
     $general_config{'logfile'}          = $config->val('General', 'LogFilePath');
-
-    say Dumper(%general_config) if $flags{debug};
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": Settings debug_log == $general_config{debug_log}\n",
+      "           logfile   == $general_config{logfile}" if ($flags{debug} eq 'true');
 
     return %general_config;
 }
 
 our sub get_cli_config ($self, $config, %flags) {
+    my $sub = (caller(0))[3];
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__ if ($flags{debug} eq 'true');
+
     my %cli_config;
-    unless (exists $flags{debug}) {
-        $cli_config{'debug'} = $config->val('CLI', 'EnableDebugging');
+    unless ($flags{debug} eq 'true') {
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": setting debug setting from configuration file" if ($flags{debug} eq 'true');
+        $cli_config{'debug'}     = $config->val('CLI', 'EnableDebugging');
     } else {
-        $cli_config{'debug'} = $flags{debug};
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": debugging requested at command line, setting" if ($flags{debug} eq 'true');
+        $cli_config{'debug'}     = $flags{debug};
     }
-    $cli_config{'trace'}     = $config->val('CLI', 'EnableTracing');
-    $cli_config{'verbose'}   = $config->val('CLI', 'BeVerbose');
-    $cli_config{'log_level'} = $config->val('CLI', 'LogLevel');
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": Setting debug == $cli_config{debug}" if ($flags{debug} eq 'true');
+
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": setting verbosity from configuration file" if ($flags{debug} eq 'true');
+    $cli_config{'verbose'}       = $config->val('CLI', 'BeVerbose');
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": Setting verbose == $cli_config{verbose}" if ($flags{debug} eq 'true');
+
+    if ($flags{'log_lvl'} ne 'none') {
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": log level requested at command line, setting" if ($flags{debug} eq 'true');
+        $cli_config{'log_lvl'} = $flags{'log_lvl'}
+    } else {
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": setting log level from configuration file" if ($flags{debug} eq 'true');
+        $cli_config{'log_lvl'} = $config->val('CLI', 'LogLevel');
+    }
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": Setting log_lvl == $cli_config{log_lvl}" if ($flags{debug} eq 'true');
 
     return %cli_config;
 }
 
 our sub load_config ($self, %flags) {
+    my $sub = (caller(0))[3];
+    say STDERR __PACKAGE__ . ": $sub: " . __LINE__ if ($flags{debug} eq 'true');
+
     # read in configuration
     my $cfg_file;
     unless (exists($flags{cfgfile})) {
         $cfg_file = File::Spec->rootdir() . "etc/discovery/config.ini";
     } else {
+        say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+          ": config file option passed: $flags{cfgfile}" if ($flags{debug} eq 'true');
         if (-f $flags{cfgfile}) {
-            $cfg_file = $flags{'config_file'};
+            say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+              ": $flags{cfgfile} exists" if ($flags{debug} eq 'true');
+            $cfg_file = $flags{'cfgfile'};
         } else {
             say STDERR "Configuration File Not Found. Exiting.";
             exit -1;
@@ -155,17 +223,26 @@ our sub load_config ($self, %flags) {
 
     %config = $self->_initialize(\%config, %flags);
 
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": dump of configuration structure" if ($flags{debug} eq 'true');
+    say STDERR Dumper %config if ($flags{debug} eq 'true');
+
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": Returning configuration structure" if ($flags{debug} eq 'true');
     return %config;
 }
 
 our sub get_os ($self, $config) {
     my $sub = (caller(0))[3];
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__ if ($config{cli}->{debug} eq 'true');
 
     my $os;
-
-    say STDERR __PACKAGE__, ': ', $sub, ': ', __LINE__, ": OPERATING SYSTEM: $Config{osname}" if $config{cli}->{debug};
-    say STDERR __PACKAGE__, ': ', $sub, ': ', __LINE__, ": OPERATING SYSTEM: $Config{archname}" if $config{cli}->{debug};
-    say STDERR __PACKAGE__, ': ', $sub, ': ', __LINE__, ": OPERATING SYSTEM VERSION: $Config{osvers}" if $config{cli}->{debug};
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": OPERATING SYSTEM: $Config{osname}" if ($config{cli}->{debug} eq 'true');
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": OPERATING SYSTEM: $Config{archname}" if ($config{cli}->{debug} eq 'true');
+    say STDERR __PACKAGE__, ": $sub: ", __LINE__,
+      ": OPERATING SYSTEM VERSION: $Config{osvers}" if ($config{cli}->{debug} eq 'true');
 
     $os = $Config{osname};
 
