@@ -78,6 +78,7 @@ our sub runme ($self, $os, $debug) {
         } else {
             $host_type = $output[0];
         }
+        chomp($host_type);
     }
 
     $values{'HostType'}->{'type'} = $host_type;
