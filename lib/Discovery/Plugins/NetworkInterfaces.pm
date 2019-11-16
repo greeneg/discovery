@@ -45,7 +45,15 @@ use lib "$FindBin::Bin/../lib";
 use Config;
 use Data::Dumper;
 use List::MoreUtils qw(only_index);
-use Net::Interface qw(:lower inet_ntoa full_inet_ntop);
+use Net::Interface qw(
+    :afs
+    :pfs
+    :ifs
+    :iffs
+    :iftype
+    :lower
+    inet_ntoa
+    full_inet_ntop);
 use POSIX;
 
 use constant INET  => 2;
@@ -128,6 +136,32 @@ my sub create_addr_struct ($self, $int_info, $interface, $type, $ip_addresses, $
     return @converted_addresses;
 }
 
+our sub get_flags ($self, $interface, $debug) {
+    my @flags;
+    say STDERR "INTERFACE: $interface" if $debug eq 'true';
+    if (defined $interface->flags()) {
+        say STDERR "FLAGS: ", $interface->flags() if $debug eq 'true';
+        push @flags, ($interface->flags() & IFF_UP()) ? 'up' : 'down';
+        foreach my $ifflag_bf_struct (sort @{$Net::Interface::EXPORT_TAGS{iffs}}) {
+            say STDERR "IFFS TAG: $ifflag_bf_struct" if $debug eq 'true';
+            no strict 'refs';
+            say STDERR "IFFS TAG VALUE: ", 0 + &$ifflag_bf_struct() if $debug eq 'true';
+            use strict;
+            my $ifflag_enum = eval { no strict 'refs'; 0 + &$ifflag_bf_struct(); };
+            next if $ifflag_enum == IFF_UP();
+            next if $ifflag_enum == IFF_RUNNING();
+            if ($interface->flags() & $ifflag_enum) {
+                push @flags, lc(substr($ifflag_bf_struct, 4));
+            }
+        }
+        say STDERR "FLAGS STRING: @flags" if $debug eq 'true';
+    } else {
+        push @flags, 'down';
+    }
+
+    return @flags;
+}
+
 our sub runme ($self, $os, $debug) {
     my $sub = (caller(0))[3];
     say 'Sub: $sub: line number: ', __LINE__ if ($debug eq 'true');
@@ -145,6 +179,12 @@ our sub runme ($self, $os, $debug) {
         my @ipv4_addresses = $interface->address(INET);
         my @ipv6_addresses = $interface->address(INET6);
 
+        my $status = "up";
+        unless (defined $interface->flags() &&
+                        $interface->flags() & IFF_UP()) {
+            $status = "down";
+        }
+
         my @converted_addresses;
         push(@converted_addresses, create_addr_struct($self, $int_info, $interface,
               INET, \@ipv4_addresses, $debug));
@@ -157,10 +197,13 @@ our sub runme ($self, $os, $debug) {
             $hw_addr = Net::Interface::mac_bin2hex($int_info->{'mac'});
         }
         use warnings;
+        my @flags = get_flags($self, $interface, $debug);
 
         $values{'Network'}->{'Interfaces'}->{$interface}->{'name'} = "$interface";
         $values{'Network'}->{'Interfaces'}->{$interface}->{'addresses'} = \@converted_addresses;
         $values{'Network'}->{'Interfaces'}->{$interface}->{'mac'} = $hw_addr;
+        $values{'Network'}->{'Interfaces'}->{$interface}->{'status'} = $status;
+        $values{'Network'}->{'Interfaces'}->{$interface}->{'flags'} = \@flags;
     }
 
     return %values;
