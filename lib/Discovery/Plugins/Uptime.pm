@@ -104,14 +104,14 @@ our sub runme ($self, $os, $debug) {
     }
 
     my %values;
-    $values{'uptime'}->{'multi_value'} = { 'seconds' => $seconds,
+    $values{'Uptime'}->{'multi_value'} = { 'seconds' => $seconds,
                                            'hours'   => $hours,
                                            'days'    => $days,
                                            'uptime'  => "$days days" };
-    $values{'uptime'}->{'uptime'}      = "$days days";
-    $values{'uptime'}->{'days'}        = $days;
-    $values{'uptime'}->{'hours'}       = $hours;
-    $values{'uptime'}->{'seconds'}     = $seconds;
+    $values{'Uptime'}->{'uptime'}      = "$days days";
+    $values{'Uptime'}->{'days'}        = $days;
+    $values{'Uptime'}->{'hours'}       = $hours;
+    $values{'Uptime'}->{'seconds'}     = $seconds;
 
     return %values;
 }
