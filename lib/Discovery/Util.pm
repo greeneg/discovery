@@ -42,6 +42,7 @@ use utf8;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
+use boolean;
 use Discovery::Constants;
 use Discovery::Config;
 use Discovery::Logger;
@@ -228,4 +229,4 @@ our sub discovery_loop ($self, $config, $log, $debug_log, $debug) {
     }
 }
 
-1;
+true;
