@@ -5,7 +5,7 @@
 # Application: discovery.pl                                                             #
 # Summary:     A System Discovery Tool                                                  #
 # Author:      Gary L. Greene, Jr. <greeneg@yggdrasilsoft.com>                          #
-# Copyright:   2011-2017 YggdrasilSoft, LLC.                                            #
+# Copyright:   2011-2019 YggdrasilSoft, LLC.                                            #
 # License:     Apache Public License, v2                                                #
 #                                                                                       #
 #=======================================================================================#
@@ -43,6 +43,7 @@ use utf8;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
+use boolean;
 use Config;
 use Data::Dumper;
 use POSIX;
@@ -272,14 +273,14 @@ our sub runme ($self, $os, $debug) {
 
     my ($system, undef, $release, $build, undef) = POSIX::uname();
 
-    $values{'operating_system'}->{'family'} = lc($system);
-    $values{'operating_system'}->{'distribution'} = get_distribution($self, $system, $release, $build);
-    $values{'operating_system'}->{'name'} = get_name($self, $system);
-    $values{'operating_system'}->{'version'} = get_version($self, $system, $release);
-    $values{'operating_system'}->{'kernel_version'} = $release;
-    $values{'operating_system'}->{'kernel_build'} = get_build($self, $system, $build);
+    $values{'OperatingSystem'}->{'family'} = lc($system);
+    $values{'OperatingSystem'}->{'distribution'} = get_distribution($self, $system, $release, $build);
+    $values{'OperatingSystem'}->{'name'} = get_name($self, $system);
+    $values{'OperatingSystem'}->{'version'} = get_version($self, $system, $release);
+    $values{'OperatingSystem'}->{'kernel_version'} = $release;
+    $values{'OperatingSystem'}->{'kernel_build'} = get_build($self, $system, $build);
 
     return %values;
 }
 
-1;
+true;
