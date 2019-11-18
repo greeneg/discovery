@@ -24,7 +24,7 @@
 #                                                                                       #
 #########################################################################################
 
-package Discovery::Plugins::HostType;
+package Discovery::Plugins::LocalUsers;
 
 use strict;
 use warnings;
@@ -43,6 +43,8 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 
 use boolean;
+use Data::Dumper;
+use Mac::PropertyList qw(:all);
 
 sub new ($class) {
     my $self = {};
@@ -51,38 +53,57 @@ sub new ($class) {
     return $self;   
 }
 
-my sub use_virt_what ($self) {
-    # see if virt-what is available
-    my $is_available = false;
-    my $path         = undef;
-    if (-x '/usr/sbin/virt-what') {
-        $is_available = true;
-        $path         = '/usr/sbin/virt-what';
-    } elsif (-x '/usr/local/sbin/virt-what') {
-        $is_available = true;
-        $path         = '/usr/local/sbin/virt-what';
+my sub remove_dot_files ($self, @files) {
+    my @_files;
+
+    foreach my $file (@files) {
+        next if $file eq '.' or $file eq '..';
+        push @_files, $file;
     }
 
-    return ($is_available, $path);
+    return @_files;
+}
+
+my sub get_plist_list ($self) {
+    opendir my $pldir, '/System/Library/DirectoryServices/DefaultLocalDB/Default/users' or
+      die "Cannot open directory: $OS_ERROR\n";
+    my @files = readdir $pldir;
+    closedir $pldir;
+
+    @files = remove_dot_files($self, @files);
+
+    return @files;
+}
+
+my sub get_local_accounts ($self, $os) {
+    my %values;
+    my @files = ();
+    if ($os eq 'darwin') {
+        @files = get_plist_list($self);
+        foreach my $file (@files) {
+            my $record = parse_plist_file("/System/Library/DirectoryServices/DefaultLocalDB/Default/users/$file") or
+              die "Cannot read file $file: $OS_ERROR";
+            # Macs can have more than one account name for a record
+            my $usr_name = $record->{'name'}->[0]->value;
+            $values{'LocalUsers'}->{$usr_name}->{'uid'} = $record->{'uid'}->[0]->value;
+            $values{'LocalUsers'}->{$usr_name}->{'gid'} = $record->{'gid'}->[0]->value;
+            $values{'LocalUsers'}->{$usr_name}->{'shell'} = $record->{'shell'}->[0]->value;
+            $values{'LocalUsers'}->{$usr_name}->{'home'} = $record->{'home'}->[0]->value;
+            $values{'LocalUsers'}->{$usr_name}->{'realname'} = $record->{'realname'}->[0]->value;
+            $values{'LocalUsers'}->{$usr_name}->{'generateduid'} = $record->{'generateduid'}->[0]->value;
+        }
+    } elsif ($os eq 'linux') {
+
+    }
+
+    return %values;
 }
 
 our sub runme ($self, $os, $debug) {
     my %values;
 
     if ($EUID == 0) {
-        my $host_type = 'virtual';
-        my ($is_available, $path) = use_virt_what($self);
-        if (boolean($is_available)->isTrue) {
-            my @output = qx|$path|;
-            if (! defined $output[0]) {
-                $host_type = 'physical';
-            } else {
-                $host_type = $output[0];
-            }
-            chomp($host_type);
-        }
-
-        $values{'HostType'}->{'type'} = $host_type;
+        %values = get_local_accounts($self, $os);
     }
 
     return %values;
