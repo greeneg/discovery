@@ -69,6 +69,9 @@ my sub use_virt_what ($self) {
 our sub runme ($self, $os, $debug) {
     my %values;
 
+    # admittedly, this code is a little naive. We eventually need
+    # to port this to using more stringent tests than shelling out
+    # to virt-what
     if ($EUID == 0) {
         my $host_type = 'virtual';
         my ($is_available, $path) = use_virt_what($self);
