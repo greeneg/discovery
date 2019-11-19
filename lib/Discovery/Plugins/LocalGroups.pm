@@ -96,13 +96,12 @@ my sub get_local_groups ($self, $os) {
         foreach my $file (@files) {
             my $record = parse_plist_file("/var/db/dslocal/nodes/Default/groups/$file") or
               die "Cannot read file $file: $OS_ERROR";
-            # Macs can have more than one account name for a record
             my $grp_name = $record->{'name'}->[0]->value;
-            $values{'LocalGroups'}->{$grp_name}->{'gid'} = $record->{'uid'}->[0]->value;
-            say STDERR Dumper $record;
-#            $values{'LocalGroups'}->{$grp_name}->{'members'} = $record->{'shell'}->[0]->value;
+            $values{'LocalGroups'}->{$grp_name}->{'gid'} = $record->{'gid'}->[0]->value;
+            if (exists $record->{'users'}) {
+                $values{'LocalGroups'}->{$grp_name}->{'members'} = $record->{'users'}->values;
+            }
         }
-        exit;
     } elsif ($os eq 'linux') {
         my @groups = get_group_names($self);
         my ($name, $gid, $members);
@@ -113,8 +112,6 @@ my sub get_local_groups ($self, $os) {
             $values{'LocalUsers'}->{$name}->{'members'} = \@members;
         }
     }
-
-    say STDERR Dumper %values;
 
     return %values;
 }
