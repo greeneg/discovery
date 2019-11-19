@@ -83,8 +83,8 @@ my sub get_account_names ($self) {
     foreach my $record (@lines) {
         push(@accounts, substr($record, 0, index($record, ':')));
     }
-    say STDERR Dumper @accounts;
-    exit;
+
+    return @accounts;
 }
 
 my sub get_local_accounts ($self, $os) {
@@ -101,11 +101,22 @@ my sub get_local_accounts ($self, $os) {
             $values{'LocalUsers'}->{$usr_name}->{'gid'} = $record->{'gid'}->[0]->value;
             $values{'LocalUsers'}->{$usr_name}->{'shell'} = $record->{'shell'}->[0]->value;
             $values{'LocalUsers'}->{$usr_name}->{'home'} = $record->{'home'}->[0]->value;
-            $values{'LocalUsers'}->{$usr_name}->{'realname'} = $record->{'realname'}->[0]->value;
-            $values{'LocalUsers'}->{$usr_name}->{'generateduid'} = $record->{'generateduid'}->[0]->value;
+            $values{'LocalUsers'}->{$usr_name}->{'gecos'} = $record->{'realname'}->[0]->value;
         }
     } elsif ($os eq 'linux') {
         my @accounts = get_account_names($self);
+        foreach my $account_name (@accounts) {
+            $values{'LocalUsers'}->{$account_name}->{'name'} = $account_name;
+        }
+        my ($name, $uid, $gid, $gecos, $home, $shell);
+        while (($name, undef, $uid, $gid, undef, undef, $gecos, $home, $shell) = getpwent()) {
+            next if ! exists $values{'LocalUsers'}->{$name}->{'name'};
+            $values{'LocalUsers'}->{$name}->{'uid'} = $uid;
+            $values{'LocalUsers'}->{$name}->{'gid'} = $gid;
+            $values{'LocalUsers'}->{$name}->{'shell'} = $shell;
+            $values{'LocalUsers'}->{$name}->{'home'} = $home;
+            $values{'LocalUsers'}->{$name}->{'gecos'} = $gecos;
+        }
     }
 
     return %values;
