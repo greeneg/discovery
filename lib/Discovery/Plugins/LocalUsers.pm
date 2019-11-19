@@ -45,6 +45,7 @@ use lib "$FindBin::Bin/../lib";
 use boolean;
 use Data::Dumper;
 use File::Slurp;
+use List::MoreUtils qw(any);
 use Mac::PropertyList qw(:all);
 
 sub new ($class) {
@@ -105,12 +106,9 @@ my sub get_local_accounts ($self, $os) {
         }
     } elsif ($os eq 'linux') {
         my @accounts = get_account_names($self);
-        foreach my $account_name (@accounts) {
-            $values{'LocalUsers'}->{$account_name}->{'name'} = $account_name;
-        }
         my ($name, $uid, $gid, $gecos, $home, $shell);
         while (($name, undef, $uid, $gid, undef, undef, $gecos, $home, $shell) = getpwent()) {
-            next if ! exists $values{'LocalUsers'}->{$name}->{'name'};
+            next if ! any {$_ eq $name} @accounts;
             $values{'LocalUsers'}->{$name}->{'uid'} = $uid;
             $values{'LocalUsers'}->{$name}->{'gid'} = $gid;
             $values{'LocalUsers'}->{$name}->{'shell'} = $shell;
