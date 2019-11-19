@@ -44,6 +44,7 @@ use lib "$FindBin::Bin/../lib";
 
 use boolean;
 use Data::Dumper;
+use File::Slurp;
 use Mac::PropertyList qw(:all);
 
 sub new ($class) {
@@ -65,7 +66,7 @@ my sub remove_dot_files ($self, @files) {
 }
 
 my sub get_plist_list ($self) {
-    opendir my $pldir, '/System/Library/DirectoryServices/DefaultLocalDB/Default/users' or
+    opendir my $pldir, '/var/db/dslocal/nodes/Default/users' or
       die "Cannot open directory: $OS_ERROR\n";
     my @files = readdir $pldir;
     closedir $pldir;
@@ -75,13 +76,24 @@ my sub get_plist_list ($self) {
     return @files;
 }
 
+my sub get_account_names ($self) {
+    my @accounts;
+
+    my @lines = read_file('/etc/passwd');
+    foreach my $record (@lines) {
+        push(@accounts, substr($record, 0, index($record, ':')));
+    }
+    say STDERR Dumper @accounts;
+    exit;
+}
+
 my sub get_local_accounts ($self, $os) {
     my %values;
     my @files = ();
     if ($os eq 'darwin') {
         @files = get_plist_list($self);
         foreach my $file (@files) {
-            my $record = parse_plist_file("/System/Library/DirectoryServices/DefaultLocalDB/Default/users/$file") or
+            my $record = parse_plist_file("/var/db/dslocal/nodes/Default/users/$file") or
               die "Cannot read file $file: $OS_ERROR";
             # Macs can have more than one account name for a record
             my $usr_name = $record->{'name'}->[0]->value;
@@ -93,7 +105,7 @@ my sub get_local_accounts ($self, $os) {
             $values{'LocalUsers'}->{$usr_name}->{'generateduid'} = $record->{'generateduid'}->[0]->value;
         }
     } elsif ($os eq 'linux') {
-
+        my @accounts = get_account_names($self);
     }
 
     return %values;
