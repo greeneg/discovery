@@ -107,9 +107,9 @@ my sub get_local_groups ($self, $os) {
         my ($name, $gid, $members);
         while (($name, undef, $gid, $members) = getgrent()) {
             next if ! any {$_ eq $name} @groups;
-            $values{'LocalUsers'}->{$name}->{'gid'} = $gid;
+            $values{'LocalGroups'}->{$name}->{'gid'} = $gid;
             my @members = split(/ /, $members);
-            $values{'LocalUsers'}->{$name}->{'members'} = \@members;
+            $values{'LocalGroups'}->{$name}->{'members'} = \@members;
         }
     }
 
