@@ -24,7 +24,7 @@
 #                                                                                       #
 #########################################################################################
 
-package Discovery::Plugins::Disks;
+package Discovery::Plugins::LocalDisks;
 
 use strict;
 use warnings;
